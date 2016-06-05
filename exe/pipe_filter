@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+
+require "pipe_fitter/cli"
+PipeFitter::Cli.start
