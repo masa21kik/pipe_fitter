@@ -26,7 +26,7 @@ module PipeFitter
     def definition(pipeline_id)
       res = exec(:get_pipeline_definition, pipeline_id: pipeline_id)
       desc = description(pipeline_id)
-      Pipeline.new(res.to_h, desc.to_h)
+      Pipeline.create(res.to_h, desc.to_h)
     end
 
     def put_definition(pipeline_id, pipeline)
@@ -55,7 +55,7 @@ module PipeFitter
     def sync_tags(pipeline_id, pipeline)
       p = definition(pipeline_id)
       return if p.tags == pipeline.tags
-      exec(:remove_tags, p.remove_tags_opts) unless p.tags.empty?
+      exec(:remove_tags, p.remove_tags_opts(pipeline_id)) unless p.tags.empty?
       exec(:add_tags, pipeline.add_tags_opts(pipeline_id)) unless pipeline.tags.empty?
     end
 

@@ -5,108 +5,198 @@ require "pathname"
 
 module PipeFitter
   class Pipeline
-    class << self
-      def load_yaml(filename)
-        filepath = Pathname.new(filename)
-        desc = YamlLoader.load(filepath)
-        definition = desc.delete("definition")
-        Pipeline.new(definition, desc)
-      end
+    def self.create(definition_from_api, description_from_api)
+      new(PipelineObjects.create(definition_from_api[:pipeline_objects]),
+          ParameterObjects.create(definition_from_api[:parameter_objects]),
+          ParameterValues.create(definition_from_api[:parameter_values]),
+          PipelineDescription.create(description_from_api))
     end
 
-    DESCRIPTION_KEYS = %w(name tags unique_id description).freeze
-    Diffy::Diff.default_options.merge!(diff: "-u", include_diff_info: true)
-
-    def initialize(definition, description = {})
-      @definition = Hashie::Mash.new(definition)
-      @full_description = Hashie::Mash.new(description).tap do |h|
-        if (fs = h[:fields]) && (f = fs.find { |e| e[:key] == "uniqueId" }) && f.key?(:string_value)
-          h.unique_id ||= f[:string_value]
-        end
-      end
-      @description = Hashie::Mash.new(@full_description.select { |k, v| DESCRIPTION_KEYS.include?(k) && !v.nil? })
+    def self.load_yaml(filename)
+      filepath = Pathname.new(filename)
+      yml = YamlLoader.load(filepath)
+      new(PipelineObjects.new(yml["pipeline_objects"]),
+          ParameterObjects.new(yml["parameter_objects"]),
+          ParameterValues.new(yml["parameter_values"]),
+          PipelineDescription.new(yml["pipeline_description"]))
     end
 
-    def to_yaml
-      stringify_keys(@description.merge("definition" => sorted_definition)).to_yaml
-    end
-
-    def create_opts
-      symbolize_keys(@description)
-    end
-
-    def put_definition_opts(id = nil)
-      base = { pipeline_id: id || pipeline_id }
-      base.merge(symbolize_keys(@definition))
-    end
-
-    def add_tags_opts(id = nil)
-      { pipeline_id: id || pipeline_id, tags: @full_description.tags }
-    end
-
-    def remove_tags_opts(id = nil)
-      { pipeline_id: id || pipeline_id, tag_keys: @full_description.tags.map { |e| e["key"] } }
-    end
-
-    def activate_opts(parameter_values, start_timestamp = nil, id = nil)
-      pv = (parameter_values || {}).map { |k, v| { "id" => k.to_s, "string_value" => v.to_s } }
-      { pipeline_id: id || pipeline_id, parameter_values: pv, start_timestamp: start_timestamp }.select { |_, v| !v.nil? }
-    end
-
-    def pipeline_id
-      @full_description.pipeline_id
-    end
-
-    def name
-      @full_description.name
+    def initialize(pipeline_objects, parameter_objects, parameter_values, pipeline_description)
+      @pipeline_objects = pipeline_objects
+      @parameter_objects = parameter_objects
+      @parameter_values = parameter_values
+      @pipeline_description = pipeline_description
     end
 
     def tags
-      @full_description.tags
+      @pipeline_description.tags
+    end
+
+    def to_yaml
+      {
+        "pipeline_description" => @pipeline_description.to_objs,
+        "pipeline_objects" => @pipeline_objects.to_objs,
+        "parameter_objects" => @parameter_objects.to_objs,
+        "parameter_values" => @parameter_values.to_objs,
+      }.to_yaml
+    end
+
+    def put_definition_opts(pipeline_id)
+      {
+        pipeline_id: pipeline_id,
+        pipeline_objects: @pipeline_objects.to_api_opts,
+        parameter_objects: @parameter_objects.to_api_opts,
+        parameter_values: @parameter_values.to_api_opts,
+      }
+    end
+
+    def add_tags_opts(pipeline_id)
+      { pipeline_id: pipeline_id, tags: @pipeline_description.tags_opts }
+    end
+
+    def remove_tags_opts(pipeline_id)
+      { pipeline_id: pipeline_id, tag_keys: @pipeline_description.tag_keys }
     end
 
     def diff(other, format = nil)
       Diffy::Diff.new(self.to_yaml, other.to_yaml).to_s(format)
     end
 
-    private
+    class PipelineBaseObjects
+      def initialize(objs)
+        @objs = case objs
+                when Array then objs.map { |obj| symbolize_keys(obj) }
+                else symbolize_keys(objs) || {}
+                end
+      end
 
-    def sorted_definition
-      top_keys = %w(pipeline_objects parameter_objects parameter_values).freeze
-      obj_keys = %w(id name fields).freeze
-      field_keys = %w(key string_value ref_value).freeze
-
-      d = @definition.sort_by { |k, _| [top_keys.index(k) || top_keys.size, k] }.to_h
-      top_keys.each do |k|
-        next if !d[k].is_a?(Array) || d[k].empty?
-        d[k] = d[k].sort_by { |e| e["id"] }
-        d[k].map! do |v|
-          v["fields"] = v["fields"].sort_by { |e| e["key"] }
-          v["fields"].map! { |vv| vv.sort_by { |kk, _| field_keys.index(kk) }.to_h }
-          v.sort_by { |kk, _| obj_keys.index(kk) }.to_h
+      def to_objs
+        case @objs
+        when Array then @objs.map { |obj| stringify_keys(obj) }
+        else stringify_keys(@objs)
         end
       end
-      d
+
+      private
+
+      def stringify_keys(val)
+        modify_keys_recursively(val, __method__)
+      end
+
+      def symbolize_keys(val)
+        modify_keys_recursively(val, __method__)
+      end
+
+      def modify_keys_recursively(val, method)
+        return val unless val.is_a?(Hash)
+        h = Hashie.send(method, val.to_h)
+        h.each do |k, v|
+          case v
+          when Array then h[k].map! { |e| self.send(method, e) }
+          when Hash then h[k] = self.send(method, v)
+          end
+        end
+        h
+      end
     end
 
-    def stringify_keys(val)
-      modify_keys_recursively(val, __method__)
-    end
+    class PipelineObjects < PipelineBaseObjects
+      def self.create(api_res)
+        objs = api_res.map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
+          base = { id: obj[:id], name: obj[:name] }
+          obj[:fields].sort_by { |f| f[:key] }.inject(base) do |a, e|
+            a.update(e[:key].to_sym => (e[:string_value] || { ref: e[:ref_value] } ))
+          end
+        end
+        new(objs)
+      end
 
-    def symbolize_keys(val)
-      modify_keys_recursively(val, __method__)
-    end
-
-    def modify_keys_recursively(val, method)
-      return val unless val.is_a?(Hash)
-      h = Hashie.send(method, val.to_h)
-      h.each do |k, v|
-        case v
-        when Array then h[k].map! { |e| self.send(method, e) }
-        when Hash then h[k] = self.send(method, v)
+      def to_api_opts
+        @objs.map do |obj|
+          base = { id: obj[:id], name: obj[:name], fields: [] }
+          obj.each do |k, v|
+            next if k == :id || k == :name
+            if v.is_a?(Hash) && v.key?(:ref)
+              base[:fields] << { key: k, ref_value: v[:ref] }
+            else
+              base[:fields] << { key: k, string_value: v }
+            end
+          end
+          base
         end
       end
-      h
+    end
+
+    class ParameterObjects < PipelineBaseObjects
+      def self.create(api_res)
+        objs = api_res.map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
+          base = { id: obj[:id] }
+          obj[:attributes].sort_by { |a| a[:key] }.inject(base) do |a, e|
+            a.update(e[:key].to_sym => e[:string_value])
+          end
+        end
+        new(objs)
+      end
+
+      def to_api_opts
+        @objs.map do |obj|
+          base = { id: obj[:id], attributes: [] }
+          obj.each do |k, v|
+            next if k == :id
+            base[:attributes] << { key: k, string_value: v }
+          end
+          base
+        end
+      end
+    end
+
+    class ParameterValues < PipelineBaseObjects
+      def self.create(api_res)
+        objs = (api_res || []).sort_by { |obj| [obj[:id], obj[:string_value]] }.map do |obj|
+          { obj[:id].to_sym => obj[:string_value] }
+        end
+        new(objs)
+      end
+
+      def to_api_opts
+        @objs.map do |e|
+          e.map do |k, v|
+            { id: k, string_value: v }
+          end
+        end.flatten
+      end
+    end
+
+    class PipelineDescription < PipelineBaseObjects
+      def self.create(api_res)
+        objs = {
+          pipeline_id: api_res[:pipeline_id],
+          name: api_res[:name],
+          description: api_res[:description],
+        }
+        objs[:tags] = api_res[:tags].map { |e| { e[:key].to_sym => e[:value] } }
+        api_res[:fields].inject(objs) do |a, e|
+          a.update(e[:key].to_sym => (e[:string_value] || { ref: e[:ref_value] } ))
+        end
+        new(objs)
+      end
+
+      def to_objs
+        keys = %i(name description tags uniqueId)
+        stringify_keys(@objs.select { |k, _| keys.include?(k) })
+      end
+
+      def tags
+        @objs[:tags]
+      end
+
+      def tags_opts
+        @objs[:tags].map { |e| e.map { |k, v| { key: k, value: v } } }.flatten
+      end
+
+      def tag_keys
+        @objs[:tags].map(&keys).flatten
+      end
     end
   end
 end
