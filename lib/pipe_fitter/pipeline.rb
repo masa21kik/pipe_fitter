@@ -128,7 +128,7 @@ module PipeFitter
 
     class PipelineObjects < PipelineBaseObjects
       def self.create(api_res)
-        objs = api_res.map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
+        objs = (api_res || []).map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
           base = { id: obj[:id], name: obj[:name] }
           obj[:fields].sort_by { |f| f[:key] }.inject(base) do |a, e|
             update_hash(a, e[:key].to_sym, e[:string_value] || { ref: e[:ref_value] })
@@ -146,7 +146,7 @@ module PipeFitter
 
     class ParameterObjects < PipelineBaseObjects
       def self.create(api_res)
-        objs = api_res.map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
+        objs = (api_res || []).map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
           base = { id: obj[:id] }
           obj[:attributes].sort_by { |a| a[:key] }.inject(base) do |a, e|
             update_hash(a, e[:key].to_sym, e[:string_value])
@@ -186,8 +186,8 @@ module PipeFitter
           name: api_res[:name],
           description: api_res[:description],
         }
-        objs[:tags] = api_res[:tags].map { |e| { e[:key].to_sym => e[:value] } }
-        api_res[:fields].inject(objs) do |a, e|
+        objs[:tags] = (api_res[:tags] || []).map { |e| { e[:key].to_sym => e[:value] } }
+        (api_res[:fields] || []).inject(objs) do |a, e|
           a.update(e[:key].to_sym => (e[:string_value] || { ref: e[:ref_value] } ))
         end
         new(objs)

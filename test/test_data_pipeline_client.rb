@@ -3,7 +3,7 @@ require_relative "helper"
 class DataPipelineClientTest < Test::Unit::TestCase
   setup do
     @dpc = PipeFitter::DataPipelineClient.new(region: "ap-northeast-1")
-    @yml = create_tempfile("---\nname: foo\ntags:\n- key: bar\n  value: baz\ndefinition:\n  pipeline_obects: []")
+    @yml = create_tempfile("---\npipeline_description:\n  name: foo\n  tags:\n  - key: bar\n    value: baz\npipeline_obects: []")
     @pl = PipeFitter::Pipeline.load_yaml(@yml.path)
     stub(@dpc).exec do
       Hashie::Mash.new(

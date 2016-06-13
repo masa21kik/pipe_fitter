@@ -1,84 +1,52 @@
 require_relative "helper"
 
 class PipelineTest < Test::Unit::TestCase
-  sub_test_case "load_yaml" do
-    data("normal" => [
-           "---\nname: foo\nunique_id: bar\ntags:\n- key: hoge\n  value: fuga\ndefinition:\n  pipeline_obects: []",
-           { name: "foo", tags: [ { "key" => "hoge", "value" => "fuga" } ] }])
-    def test_load_yaml(data)
-      yml, expects = data
-      file = create_tempfile(yml)
-      p = PipeFitter::Pipeline.load_yaml(file.path)
-      assert_equal(p.name, expects[:name])
-      assert_equal(p.tags, expects[:tags])
-    end
-
-    data("normal" => [
-           "---\npipeline_objects:\n- id: Default\n  name: Default\n  fields: []",
-           "---\nname: foo\nunique_id: bar\ndefinition:\n  pipeline_objects:\n  - id: Default\n    name: Default\n    fields: []\n",
-         ])
-    def test_include_yaml(data)
-      included_yml, expect = data
-      included_file = create_tempfile(included_yml)
-      base_yml = "---\nname: foo\nunique_id: bar\ndefinition: <%= include_yaml('#{included_file.path}') %>"
-      base_file = create_tempfile(base_yml)
-      p = PipeFitter::Pipeline.load_yaml(base_file.path)
-      assert_equal(p.to_yaml, expect)
-    end
-  end
-
   sub_test_case "diff" do
     data("empty" => ["", ""],
          "same" => [
-           "---\nname: foo\nunique_id: bar\ndefinition:\n  pipeline_obects: []",
-           "---\nname: foo\nunique_id: bar\ndefinition:\n  pipeline_obects: []",
+           "---\npipeline_description:\n  name: foo\n  uniqueId: bar\npipeline_objects: []",
+           "---\npipeline_description:\n  name: foo\n  uniqueId: bar\npipeline_objects: []",
          ],
          "env variable" => [
-           "---\nname: foo\nunique_id: bar\ndefinition:\n  pipeline_obects: []",
-           "---\nname: <%= ENV['NAME'] %>\nunique_id: bar\ndefinition:\n  pipeline_obects: []",
+           "---\npipeline_description:\n  name: foo\n  uniqueId: bar\npipeline_objects: []",
+           "---\npipeline_description:\n  name: <%= ENV['NAME'] %>\n  uniqueId: bar\npipeline_objects: []",
          ],
          "swaped" => [
            <<-EOS,
 ---
-name: foo
-description: bar
-tags:
-- key: env
-  value: staging
-unique_id: baz
-definition:
-  pipeline_objects:
-  - id: Default
-    name: Default
-    fields:
-    - key: failureAndRerunMode
-      string_value: CASCADE
-    - key: schedule
-      ref_value: ScheduleId_DefaultSchedule
-  - id: ScheduleId_DefaultSchedule
-    name: DefaultSchedule
-    fields: []
-         EOS
+pipeline_description:
+  name: foo
+  description: bar
+  tags:
+  - key: env
+    value: staging
+  uniqueId: baz
+pipeline_objects:
+- id: Default
+  name: Default
+  failureAndRerunMode: CASCADE
+  schedule:
+    ref: ScheduleId_DefaultSchedule
+- id: ScheduleId_DefaultSchedule
+  name: DefaultSchedule
+           EOS
            <<-EOS,
 ---
-name: foo
-description: bar
-tags:
-- key: env
-  value: staging
-unique_id: baz
-definition:
-  pipeline_objects:
-  - id: ScheduleId_DefaultSchedule
-    name: DefaultSchedule
-    fields: []
-  - fields:
-    - key: schedule
-      ref_value: ScheduleId_DefaultSchedule
-    - key: failureAndRerunMode
-      string_value: CASCADE
-    name: Default
-    id: Default
+pipeline_description:
+  name: foo
+  description: bar
+  tags:
+  - key: env
+    value: staging
+  uniqueId: baz
+pipeline_objects:
+- id: ScheduleId_DefaultSchedule
+  name: DefaultSchedule
+- schedule:
+    ref: ScheduleId_DefaultSchedule
+  failureAndRerunMode: CASCADE
+  name: Default
+  id: Default
          EOS
          ]
         )
@@ -91,9 +59,9 @@ definition:
     end
 
     data("simple" => [
-           ["---\nname: foo\nunique_id: bar1\ndefinition:\n  pipeline_obects: []",
-            "---\nname: foo\nunique_id: bar2\ndefinition:\n  pipeline_obects: []"],
-           "-unique_id: bar1\n+unique_id: bar2",
+           ["---\npipeline_description:\n  name: foo\n  uniqueId: bar1\npipeline_obects: []",
+            "---\npipeline_description:\n  name: foo\n  uniqueId: bar2\npipeline_obects: []"],
+           "-  uniqueId: bar1\n+  uniqueId: bar2",
          ])
     def test_diff(data)
       files, expect = data
