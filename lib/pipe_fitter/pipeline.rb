@@ -98,6 +98,32 @@ module PipeFitter
         end
         h
       end
+
+      private_class_method def self.update_hash(base, key, value)
+        if base.key?(key)
+          base[key] = [base[key]] unless base[key].is_a?(Array)
+          base[key] << value
+          base[key].sort!
+        else
+          base[key] = value
+        end
+        base
+      end
+
+      def split_object(obj, skip_keys)
+        res = []
+        obj.each do |k, v|
+          next if skip_keys.include?(k)
+          (v.is_a?(Array) ? v : [v]).each do |vv|
+            if vv.is_a?(Hash) && vv.key?(:ref)
+              res << { key: k, ref_value: vv[:ref] }
+            else
+              res << { key: k, string_value: vv }
+            end
+          end
+        end
+        res
+      end
     end
 
     class PipelineObjects < PipelineBaseObjects
@@ -105,7 +131,7 @@ module PipeFitter
         objs = api_res.map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
           base = { id: obj[:id], name: obj[:name] }
           obj[:fields].sort_by { |f| f[:key] }.inject(base) do |a, e|
-            a.update(e[:key].to_sym => (e[:string_value] || { ref: e[:ref_value] } ))
+            update_hash(a, e[:key].to_sym, e[:string_value] || { ref: e[:ref_value] })
           end
         end
         new(objs)
@@ -113,16 +139,7 @@ module PipeFitter
 
       def to_api_opts
         @objs.map do |obj|
-          base = { id: obj[:id], name: obj[:name], fields: [] }
-          obj.each do |k, v|
-            next if k == :id || k == :name
-            if v.is_a?(Hash) && v.key?(:ref)
-              base[:fields] << { key: k, ref_value: v[:ref] }
-            else
-              base[:fields] << { key: k, string_value: v }
-            end
-          end
-          base
+          { id: obj[:id], name: obj[:name], fields: split_object(obj, %i(id name)) }
         end
       end
     end
@@ -132,7 +149,7 @@ module PipeFitter
         objs = api_res.map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
           base = { id: obj[:id] }
           obj[:attributes].sort_by { |a| a[:key] }.inject(base) do |a, e|
-            a.update(e[:key].to_sym => e[:string_value])
+            update_hash(a, e[:key].to_sym, e[:string_value])
           end
         end
         new(objs)
@@ -140,12 +157,7 @@ module PipeFitter
 
       def to_api_opts
         @objs.map do |obj|
-          base = { id: obj[:id], attributes: [] }
-          obj.each do |k, v|
-            next if k == :id
-            base[:attributes] << { key: k, string_value: v }
-          end
-          base
+          { id: obj[:id], attributes: split_object(obj, %i(id)) }
         end
       end
     end
