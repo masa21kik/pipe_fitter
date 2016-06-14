@@ -103,7 +103,6 @@ module PipeFitter
         if base.key?(key)
           base[key] = [base[key]] unless base[key].is_a?(Array)
           base[key] << value
-          base[key].sort!
         else
           base[key] = value
         end
