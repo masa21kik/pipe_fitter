@@ -39,9 +39,9 @@ module PipeFitter
       [res.pipeline_id, put_definition(res.pipeline_id, pipeline)]
     end
 
-    def activate(pipeline_id, parameter_values, start_timestamp)
-      p = Pipeline.new({}, { pipeline_id: pipeline_id })
-      exec(:activate_pipeline, p.activate_opts(parameter_values, start_timestamp))
+    def activate(pipeline_id, parameter_file, start_timestamp)
+      p = parameter_file ? Pipeline.load_yaml(parameter_file) : Pipeline.new
+      exec(:activate_pipeline, p.activate_opts(pipeline_id, start_timestamp)).to_h
     end
 
     private

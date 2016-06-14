@@ -21,7 +21,8 @@ module PipeFitter
           PipelineDescription.new(yml["pipeline_description"]))
     end
 
-    def initialize(pipeline_objects, parameter_objects, parameter_values, pipeline_description)
+    def initialize(pipeline_objects = nil, parameter_objects = nil,
+                   parameter_values = nil, pipeline_description = nil)
       @pipeline_objects = pipeline_objects
       @parameter_objects = parameter_objects
       @parameter_values = parameter_values
@@ -41,6 +42,10 @@ module PipeFitter
       }.to_yaml
     end
 
+    def create_opts
+      @pipeline_description.to_api_opts
+    end
+
     def put_definition_opts(pipeline_id)
       {
         pipeline_id: pipeline_id,
@@ -56,6 +61,15 @@ module PipeFitter
 
     def remove_tags_opts(pipeline_id)
       { pipeline_id: pipeline_id, tag_keys: @pipeline_description.tag_keys }
+    end
+
+    def activate_opts(pipeline_id, start_timestamp)
+      opts = {
+        pipeline_id: pipeline_id,
+        start_timestamp: start_timestamp,
+      }
+      opts.merge!(parameter_values: @parameter_values.to_api_opts) if @parameter_values
+      opts
     end
 
     def diff(other, format = nil)
@@ -192,9 +206,19 @@ module PipeFitter
         new(objs)
       end
 
+      DESCRIPTION_KEYS = %i(name description tags uniqueId).freeze
+
       def to_objs
-        keys = %i(name description tags uniqueId)
-        stringify_keys(@objs.select { |k, _| keys.include?(k) })
+        stringify_keys(@objs.select { |k, _| DESCRIPTION_KEYS.include?(k) })
+      end
+
+      def to_api_opts
+        @objs.select { |k, _| DESCRIPTION_KEYS.include?(k) }.tap do |obj|
+          obj[:unique_id] = obj.delete(:uniqueId)
+          obj[:tags] = obj[:tags].map do |tag|
+            tag.map { |k, v| { key: k, value: v } }
+          end.flatten
+        end
       end
 
       def tags

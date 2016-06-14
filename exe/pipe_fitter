@@ -36,11 +36,11 @@ module PipeFitter
 
     desc "activate", "Activate pipeline"
     option :pipeline_id, type: :string, required: true, aliases: "i"
-    option :parameter_values, type: :hash, required: false, aliases: "p"
+    option :parameter_file, type: :string, required: false, aliases: "p"
     option :start_timestamp, type: :string, required: false, aliases: "t"
     def activate
       t = options[:start_timestamp] ? Time.parse(options[:start_timestamp]) : nil
-      puts client.activate(options[:pipeline_id], options[:parameter_values], t)
+      puts client.activate(options[:pipeline_id], options[:parameter_file], t)
     end
 
     private
