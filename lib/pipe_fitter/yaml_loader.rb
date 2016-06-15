@@ -9,15 +9,15 @@ module PipeFitter
         YAML.load(eval_erb(filename, context)) || {}
       end
 
-      def include_yaml(filepath, indent = 1)
-        load(filepath).to_yaml.chomp.gsub("---", "").gsub("\n", "\n" + "  " * indent)
+      def include_template(filename, context = {})
+        eval_erb(filename, context)
       end
 
       private
 
       def eval_erb(filename, context = nil)
         context ||= {}
-        ERB.new(File.read(filename)).result(binding)
+        ERB.new(File.read(filename), nil, "-").result(binding).strip
       end
     end
   end
