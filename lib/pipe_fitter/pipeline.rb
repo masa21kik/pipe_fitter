@@ -5,6 +5,8 @@ require "pathname"
 
 module PipeFitter
   class Pipeline
+    Diffy::Diff.default_options.merge!(diff: "-u", include_diff_info: true)
+
     def self.create(definition_from_api, description_from_api)
       new(PipelineObjects.create(definition_from_api[:pipeline_objects]),
           ParameterObjects.create(definition_from_api[:parameter_objects]),
