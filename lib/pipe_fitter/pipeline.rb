@@ -68,7 +68,7 @@ module PipeFitter
         pipeline_id: pipeline_id,
         start_timestamp: start_timestamp,
       }
-      opts.merge!(parameter_values: @parameter_values.to_api_opts) if @parameter_values
+      opts[:parameter_values] =  @parameter_values.to_api_opts if @parameter_values
       opts
     end
 
@@ -143,9 +143,10 @@ module PipeFitter
       def self.create(api_res)
         objs = (api_res || []).map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
           base = { id: obj[:id], name: obj[:name] }
-          obj[:fields].sort_by { |f| f[:key] }.inject(base) do |a, e|
+          fields = obj[:fields].inject({}) do |a, e|
             update_hash(a, e[:key].to_sym, e[:string_value] || { ref: e[:ref_value] })
           end
+          base.merge(fields.sort_by { |k, _| k }.to_h)
         end
         new(objs)
       end
@@ -198,8 +199,8 @@ module PipeFitter
           pipeline_id: api_res[:pipeline_id],
           name: api_res[:name],
           description: api_res[:description],
+          tags: (api_res[:tags] || []).map { |e| { e[:key].to_sym => e[:value] } },
         }
-        objs[:tags] = (api_res[:tags] || []).map { |e| { e[:key].to_sym => e[:value] } }
         (api_res[:fields] || []).inject(objs) do |a, e|
           a.update(e[:key].to_sym => (e[:string_value] || { ref: e[:ref_value] } ))
         end
