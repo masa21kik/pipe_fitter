@@ -43,6 +43,12 @@ module PipeFitter
       puts client.activate(options[:pipeline_id], options[:parameter_file], t)
     end
 
+    desc "show", "Show pipeline setting in YAML format"
+    option :parameter_file, type: :string, required: false, aliases: "p"
+    def show(definition_file)
+      puts Pipeline.load_yaml(definition_file).to_yaml
+    end
+
     private
 
     def client
