@@ -1,6 +1,8 @@
 require "bundler/gem_tasks"
 require "rake/testtask"
 
+task default: :test
+
 desc "Run test_unit based test"
 Rake::TestTask.new do |t|
   # To run test for only one file (or file path pattern)
