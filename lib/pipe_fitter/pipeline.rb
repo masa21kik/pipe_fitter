@@ -16,7 +16,7 @@ module PipeFitter
 
     def self.load_yaml(filename)
       filepath = Pathname.new(filename)
-      yml = YamlLoader.load(filepath)
+      yml = YamlLoader.new.load(filepath)
       new(PipelineObjects.new(yml["pipeline_objects"]),
           ParameterObjects.new(yml["parameter_objects"]),
           ParameterValues.new(yml["parameter_values"]),
