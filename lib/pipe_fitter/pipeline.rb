@@ -233,7 +233,7 @@ module PipeFitter
       end
 
       def tag_keys
-        @objs[:tags].map(&keys).flatten
+        @objs[:tags].map(&:keys).flatten
       end
     end
   end
