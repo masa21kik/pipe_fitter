@@ -10,7 +10,14 @@ module PipeFitter
 
     def load(filename)
       @search_path.unshift(Pathname.new(filename).dirname)
-      YAML.load(eval_erb(filename)) || {}
+      text = eval_erb(filename)
+      YAML.load(text) || {}
+    rescue Psych::SyntaxError => e
+      text.split("\n").each_with_index do |l, i|
+        mark = (e.line == i + 1) ? "*" : " "
+        $stderr.puts format("%s%4d| %s", mark, i + 1, l)
+      end
+      raise e
     end
 
     def include_template(filename, context = {})
