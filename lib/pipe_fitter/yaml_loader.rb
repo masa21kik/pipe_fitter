@@ -16,7 +16,7 @@ module PipeFitter
     def include_template(filename, context = {})
       dir = @search_path.find { |p| p.join(filename).exist? }
       path = dir.nil? ? filename : dir.join(filename)
-      eval_erb(path, context)
+      eval_erb(path, context).gsub("\n", "\n" + " " * (context[:indent] || 0))
     end
 
     private
