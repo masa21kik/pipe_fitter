@@ -11,6 +11,64 @@ class PipelineTest < Test::Unit::TestCase
            "---\npipeline_description:\n  name: foo\n  uniqueId: bar\npipeline_objects: []",
            "---\npipeline_description:\n  name: <%= ENV['NAME'] %>\n  uniqueId: bar\npipeline_objects: []",
          ],
+         "swaped" => [
+           <<-EOS,
+---
+pipeline_description:
+  name: foo
+  description: bar
+  tags:
+  - key: env
+    value: staging
+  uniqueId: baz
+pipeline_objects:
+- id: Default
+  name: Default
+  failureAndRerunMode: CASCADE
+  schedule:
+    ref: ScheduleId_DefaultSchedule
+- id: ScheduleId_DefaultSchedule
+  name: DefaultSchedule
+parameter_objects:
+- id: myParam1
+  description: param1
+  type: String
+- id: myParam2
+  description: param2
+  type: String
+parameter_values:
+- myParam1: hoge
+- myParam2: fuga
+           EOS
+           <<-EOS,
+---
+pipeline_description:
+  description: bar
+  tags:
+  - key: env
+    value: staging
+  uniqueId: baz
+  name: foo
+pipeline_objects:
+- id: ScheduleId_DefaultSchedule
+  name: DefaultSchedule
+- schedule:
+    ref: ScheduleId_DefaultSchedule
+  failureAndRerunMode: CASCADE
+  name: Default
+  id: Default
+parameter_objects:
+- id: myParam2
+  description: param2
+  type: String
+- id: myParam1
+  type: String
+  description: param1
+parameter_values:
+- myParam2: fuga
+- myParam1: hoge
+         EOS
+         ]
         )
     def test_no_diff(data)
       ENV["NAME"] = "foo"

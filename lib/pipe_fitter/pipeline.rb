@@ -79,13 +79,6 @@ module PipeFitter
     end
 
     class PipelineBaseObjects
-      def initialize(objs)
-        @objs = case objs
-                when Array then objs.map { |obj| symbolize_keys(obj) }
-                else symbolize_keys(objs) || {}
-                end
-      end
-
       def to_objs
         case @objs
         when Array then @objs.map { |obj| stringify_keys(obj) }
@@ -143,14 +136,25 @@ module PipeFitter
 
     class PipelineObjects < PipelineBaseObjects
       def self.create(api_res)
-        objs = (api_res || []).map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
+        objs = (api_res || []).map(&:to_h).map do |obj|
           base = { id: obj[:id], name: obj[:name] }
           fields = obj[:fields].inject({}) do |a, e|
             update_hash(a, e[:key].to_sym, e[:string_value] || { ref: e[:ref_value] })
           end
-          base.merge(fields.sort_by { |k, _| k }.to_h)
+          base.merge(fields)
         end
         new(objs)
+      end
+
+      KEY_ORDER = %i(id name).freeze
+
+      def initialize(objs)
+        @objs = (objs || []).map { |obj| symbolize_keys(obj) }
+                .sort_by { |obj| obj[:id] }.map do |obj|
+          obj.sort_by do |k, v|
+            [KEY_ORDER.index(k) || KEY_ORDER.size + 1, k.to_s, v.to_s]
+          end.to_h
+        end
       end
 
       def to_api_opts
@@ -162,13 +166,24 @@ module PipeFitter
 
     class ParameterObjects < PipelineBaseObjects
       def self.create(api_res)
-        objs = (api_res || []).map(&:to_h).sort_by { |obj| obj[:id] }.map do |obj|
+        objs = (api_res || []).map(&:to_h).map do |obj|
           base = { id: obj[:id] }
-          obj[:attributes].sort_by { |a| a[:key] }.inject(base) do |a, e|
+          obj[:attributes].inject(base) do |a, e|
             update_hash(a, e[:key].to_sym, e[:string_value])
           end
         end
         new(objs)
+      end
+
+      KEY_ORDER = %i(id).freeze
+
+      def initialize(objs)
+        @objs = (objs || []).map { |obj| symbolize_keys(obj) }
+                .sort_by { |obj| obj[:id] }.map do |obj|
+          obj.sort_by do |k, v|
+            [KEY_ORDER.index(k) || KEY_ORDER.size + 1, k.to_s, v.to_s]
+          end.to_h
+        end
       end
 
       def to_api_opts
@@ -180,10 +195,14 @@ module PipeFitter
 
     class ParameterValues < PipelineBaseObjects
       def self.create(api_res)
-        objs = (api_res || []).sort_by { |obj| [obj[:id], obj[:string_value]] }.map do |obj|
+        objs = (api_res || []).map do |obj|
           { obj[:id].to_sym => obj[:string_value] }
         end
         new(objs)
+      end
+
+      def initialize(objs)
+        @objs = (objs || []).sort_by { |obj| obj.first[0] }
       end
 
       def to_api_opts
@@ -207,6 +226,12 @@ module PipeFitter
           a.update(e[:key].to_sym => (e[:string_value] || { ref: e[:ref_value] } ))
         end
         new(objs)
+      end
+
+      def initialize(objs)
+        @objs = symbolize_keys(objs || {}).sort_by do |k, v|
+          [DESCRIPTION_KEYS.index(k) || DESCRIPTION_KEYS.size + 1, k.to_s, v.to_s]
+        end.to_h
       end
 
       DESCRIPTION_KEYS = %i(name description tags uniqueId).freeze
