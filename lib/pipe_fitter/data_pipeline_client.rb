@@ -11,17 +11,17 @@ module PipeFitter
     end
 
     def register(definition_file)
-      p = Pipeline.load_yaml(definition_file)
+      p = load_pipeline(definition_file)
       create(p)
     end
 
     def diff(pipeline_id, definition_file, format = :color)
-      p = Pipeline.load_yaml(definition_file)
+      p = load_pipeline(definition_file)
       definition(pipeline_id).diff(p, format.to_sym)
     end
 
     def update(pipeline_id, definition_file)
-      p = Pipeline.load_yaml(definition_file)
+      p = load_pipeline(definition_file)
       put_definition(pipeline_id, p)
     end
 
@@ -42,12 +42,12 @@ module PipeFitter
     end
 
     def activate(pipeline_id, parameter_file, start_timestamp)
-      p = parameter_file ? Pipeline.load_yaml(parameter_file) : Pipeline.new
+      p = parameter_file ? load_pipeline(parameter_file) : Pipeline.new
       exec(:activate_pipeline, p.activate_opts(pipeline_id, start_timestamp)).to_h
     end
 
     def find_registered(definition_file)
-      p = Pipeline.load_yaml(definition_file)
+      p = load_pipeline(definition_file)
       pls = list_pipelines.select { |l| l.name == p.pipeline_description.name }
       res = pls.find do |pl|
         d = Pipeline::PipelineDescription.create(description(pl.id))
@@ -57,7 +57,7 @@ module PipeFitter
     end
 
     def diff_deploy_files(definition_file, format = :color)
-      p = Pipeline.load_yaml(definition_file)
+      p = load_pipeline(definition_file)
       p.pipeline_description.deploy_files.map do |df|
         c = S3diff::Comparator.new(df[:dst], df[:src])
         c.diff.to_s(format) unless c.same?
@@ -65,13 +65,18 @@ module PipeFitter
     end
 
     def upload_deploy_files(definition_file)
-      p = Pipeline.load_yaml(definition_file)
+      p = load_pipeline(definition_file)
       p.pipeline_description.deploy_files.each do |df|
         put_object(df[:src], df[:dst])
       end
     end
 
     private
+
+    def load_pipeline(definition_file)
+      @pls ||= {}
+      @pls[definition_file] ||= Pipeline.load_yaml(definition_file)
+    end
 
     def description(pipeline_id)
       desc = exec(:describe_pipelines, pipeline_ids: [pipeline_id]).pipeline_description_list.first
