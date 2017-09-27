@@ -22,7 +22,7 @@ module PipeFitter
       new(PipelineObjects.new(yml["pipeline_objects"]),
           ParameterObjects.new(yml["parameter_objects"]),
           ParameterValues.new(yml["parameter_values"]),
-          PipelineDescription.new(yml["pipeline_description"]))
+          PipelineDescription.new(yml["pipeline_description"], filepath))
     end
 
     def initialize(pipeline_objects = nil, parameter_objects = nil,
@@ -230,10 +230,11 @@ module PipeFitter
         new(objs)
       end
 
-      def initialize(objs)
+      def initialize(objs, filepath = nil)
         @objs = symbolize_keys(objs || {}).sort_by do |k, v|
           [DESCRIPTION_KEYS.index(k) || DESCRIPTION_KEYS.size + 1, k.to_s, v.to_s]
         end.to_h
+        @filepath = filepath
       end
 
       DESCRIPTION_KEYS = %i(name description tags uniqueId).freeze
@@ -269,6 +270,12 @@ module PipeFitter
 
       def unique_id
         @objs[:uniqueId]
+      end
+
+      def deploy_files
+        (@objs[:deploy_files] || []).map do |df|
+          { src: File.join(@filepath.dirname, df[:src]), dst: df[:dst] }
+        end
       end
     end
   end

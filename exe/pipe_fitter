@@ -76,6 +76,19 @@ module PipeFitter
       puts JSON.pretty_generate(res)
     end
 
+    desc "diff_deploy_files DEFINITION_FILE", "Show deploy files differences"
+    option :format, type: :string, default: "color", aliases: "f"
+    def diff_deploy_files(definition_file)
+      client.diff_deploy_files(definition_file, options[:format]).each do |d|
+        puts d
+      end
+    end
+
+    desc "upload_deploy_files DEFINITION_FILE", "Upload deploy files"
+    def upload_deploy_files(definition_file)
+      client.upload_deploy_files(definition_file)
+    end
+
     private
 
     def client

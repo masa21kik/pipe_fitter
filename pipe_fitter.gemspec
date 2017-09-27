@@ -23,6 +23,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "diffy"
   spec.add_runtime_dependency "thor"
   spec.add_runtime_dependency "hashie"
+  spec.add_runtime_dependency "s3diff"
 
   spec.add_development_dependency "bundler", "~> 1.11"
   spec.add_development_dependency "rake", "~> 10.0"

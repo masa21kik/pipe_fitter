@@ -1,4 +1,6 @@
 require "aws-sdk"
+require "uri"
+require "s3diff"
 
 module PipeFitter
   class NoSuchPipelineError < StandardError; end
@@ -54,6 +56,21 @@ module PipeFitter
       res
     end
 
+    def diff_deploy_files(definition_file, format = :color)
+      p = Pipeline.load_yaml(definition_file)
+      p.pipeline_description.deploy_files.map do |df|
+        c = S3diff::Comparator.new(df[:dst], df[:src])
+        c.diff.to_s(format) unless c.same?
+      end.compact
+    end
+
+    def upload_deploy_files(definition_file)
+      p = Pipeline.load_yaml(definition_file)
+      p.pipeline_description.deploy_files.each do |df|
+        put_object(df[:src], df[:dst])
+      end
+    end
+
     private
 
     def description(pipeline_id)
@@ -85,8 +102,22 @@ module PipeFitter
       raise NoSuchPipelineError, args.unshift(e.class)
     end
 
+    def put_object(src, dst)
+      u = URI.parse(dst)
+      s3client.put_object(
+        body: File.read(src),
+        bucket: u.host,
+        key: u.path.sub(%r{^/}, "")
+      )
+      puts "put #{src} to #{dst}"
+    end
+
     def client
       @client ||= Aws::DataPipeline::Client.new(sdk_opts)
+    end
+
+    def s3client
+      @s3client ||= Aws::S3::Client.new(sdk_opts)
     end
 
     def sdk_opts
