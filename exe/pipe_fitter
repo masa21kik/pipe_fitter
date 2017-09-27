@@ -49,6 +49,33 @@ module PipeFitter
       puts Pipeline.load_yaml(definition_file).to_yaml
     end
 
+    desc "find", "Find pipeline besed on name and uniqueId"
+    def find(definition_file)
+      puts client.find_registered(definition_file).to_h.to_json
+    end
+
+    desc "find_diff", "Find pipeline besed on name and uniqueId, show diff"
+    option :format, type: :string, default: "color", aliases: "f"
+    def find_diff(definition_file)
+      p = client.find_registered(definition_file)
+      abort("Pipeline is not registered") if p.nil?
+      puts client.diff(p.id, definition_file, options[:format])
+    end
+
+    desc "find_update", "Find pipeline besed on name and uniqueId, update pipeline definition"
+    option :force_update, type: :boolean, aliases: "f"
+    def find_update(definition_file)
+      p = client.find_registered(definition_file)
+      abort("Pipeline is not registered") if p.nil?
+      unless options[:force_update]
+        puts client.diff(p.id, definition_file)
+        print "\nReally update pipeline definition? [y/N] : "
+        abort("Update was canceled") if $stdin.gets.chomp !~ /^y$/i
+      end
+      res = client.update(p.id, definition_file)
+      puts JSON.pretty_generate(res)
+    end
+
     private
 
     def client

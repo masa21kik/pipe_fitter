@@ -44,12 +44,32 @@ module PipeFitter
       exec(:activate_pipeline, p.activate_opts(pipeline_id, start_timestamp)).to_h
     end
 
+    def find_registered(definition_file)
+      p = Pipeline.load_yaml(definition_file)
+      pls = list_pipelines.select { |l| l.name == p.pipeline_description.name }
+      res = pls.find do |pl|
+        d = Pipeline::PipelineDescription.create(description(pl.id))
+        d.unique_id == p.pipeline_description.unique_id
+      end
+      res
+    end
+
     private
 
     def description(pipeline_id)
       desc = exec(:describe_pipelines, pipeline_ids: [pipeline_id]).pipeline_description_list.first
       raise NoSuchPipelineError, pipeline_id if desc.nil?
       desc
+    end
+
+    def list_pipelines
+      res = exec(:list_pipelines)
+      pls = res.pipeline_id_list
+      while res.has_more_results
+        res = exec(:list_pipelines, marker: res.marker)
+        pls.concat(res.pipeline_id_list)
+      end
+      pls
     end
 
     def sync_tags(pipeline_id, pipeline)

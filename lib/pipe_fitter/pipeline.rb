@@ -7,6 +7,8 @@ module PipeFitter
   class Pipeline
     Diffy::Diff.default_options.merge!(diff: "-u", include_diff_info: true)
 
+    attr_reader :pipline_object, :parameter_objects, :parameter_values, :pipeline_description
+
     def self.create(definition_from_api, description_from_api)
       new(PipelineObjects.create(definition_from_api[:pipeline_objects]),
           ParameterObjects.create(definition_from_api[:parameter_objects]),
@@ -259,6 +261,14 @@ module PipeFitter
 
       def tag_keys
         @objs[:tags].map(&:keys).flatten
+      end
+
+      def name
+        @objs[:name]
+      end
+
+      def unique_id
+        @objs[:uniqueId]
       end
     end
   end
