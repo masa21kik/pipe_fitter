@@ -7,7 +7,7 @@ module PipeFitter
   class Pipeline
     Diffy::Diff.default_options.merge!(diff: "-u", include_diff_info: true)
 
-    attr_reader :pipline_object, :parameter_objects, :parameter_values, :pipeline_description
+    attr_reader :pipline_object, :parameter_objects, :parameter_values, :pipeline_description, :deploy_files
 
     def self.create(definition_from_api, description_from_api)
       new(PipelineObjects.create(definition_from_api[:pipeline_objects]),
@@ -22,15 +22,17 @@ module PipeFitter
       new(PipelineObjects.new(yml["pipeline_objects"]),
           ParameterObjects.new(yml["parameter_objects"]),
           ParameterValues.new(yml["parameter_values"]),
-          PipelineDescription.new(yml["pipeline_description"], filepath))
+          PipelineDescription.new(yml["pipeline_description"]),
+          DeployFiles.new(yml["deploy_files"], filepath))
     end
 
     def initialize(pipeline_objects = nil, parameter_objects = nil,
-                   parameter_values = nil, pipeline_description = nil)
+                   parameter_values = nil, pipeline_description = nil, deploy_files = nil)
       @pipeline_objects = pipeline_objects
       @parameter_objects = parameter_objects
       @parameter_values = parameter_values
       @pipeline_description = pipeline_description
+      @deploy_files = deploy_files
     end
 
     def tags
@@ -271,10 +273,20 @@ module PipeFitter
       def unique_id
         @objs[:uniqueId]
       end
+    end
 
-      def deploy_files
-        (@objs[:deploy_files] || []).map do |df|
-          { src: File.join(@filepath.dirname, df[:src]), dst: df[:dst] }
+    class DeployFiles
+      include Enumerable
+
+      def initialize(objs, filepath)
+        @objs = objs
+        @filepath = filepath
+      end
+
+      def each
+        (@objs || []).map do |df|
+          h = { src: File.join(@filepath.dirname, df["src"]), dst: df["dst"] }
+          yield h
         end
       end
     end

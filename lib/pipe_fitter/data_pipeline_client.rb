@@ -20,13 +20,13 @@ module PipeFitter
       [
         definition(pipeline_id).diff(p, format.to_sym),
         diff_deploy_files(definition_file, format.to_sym),
-      ].join("\n")
+      ].compact.reject(&:empty?).join("\n")
     end
 
     def update(pipeline_id, definition_file)
+      upload_deploy_files(definition_file)
       p = load_pipeline(definition_file)
       put_definition(pipeline_id, p)
-      upload_deploy_files(definition_file)
     end
 
     def definition(pipeline_id)
@@ -62,7 +62,7 @@ module PipeFitter
 
     def diff_deploy_files(definition_file, format = :color)
       p = load_pipeline(definition_file)
-      p.pipeline_description.deploy_files.map do |df|
+      p.deploy_files.map do |df|
         c = S3diff::Comparator.new(df[:dst], df[:src])
         c.diff.to_s(format.to_sym) unless c.same?
       end.compact
@@ -70,7 +70,7 @@ module PipeFitter
 
     def upload_deploy_files(definition_file)
       p = load_pipeline(definition_file)
-      p.pipeline_description.deploy_files.each do |df|
+      p.deploy_files.each do |df|
         put_object(df[:src], df[:dst])
       end
     end
