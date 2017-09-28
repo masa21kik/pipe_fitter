@@ -78,8 +78,7 @@ module PipeFitter
     private
 
     def load_pipeline(definition_file)
-      @pls ||= {}
-      @pls[definition_file] ||= Pipeline.load_yaml(definition_file)
+      Pipeline.load_yaml(definition_file)
     end
 
     def description(pipeline_id)
