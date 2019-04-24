@@ -63,7 +63,7 @@ module PipeFitter
     def diff_deploy_files(definition_file, format = :color)
       p = load_pipeline(definition_file)
       p.deploy_files.map do |df|
-        c = S3diff::Comparator.new(df[:dst], df[:src])
+        c = S3diff::Comparator.new(df[:dst], df[:src], sdk_opts)
         c.diff.to_s(format.to_sym) unless c.same?
       end.compact
     end
