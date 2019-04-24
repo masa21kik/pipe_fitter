@@ -1,4 +1,5 @@
-require "aws-sdk"
+require "aws-sdk-datapipeline"
+require "aws-sdk-s3"
 require "uri"
 require "s3diff"
 
