@@ -9,5 +9,5 @@ require "pipe_fitter"
 require "pry"
 
 def create_tempfile(data)
-  Tempfile.new("").tap { |f| f.puts data }.tap(&:flush)    
+  Tempfile.new("").tap { |f| f.puts data }.tap(&:flush)
 end

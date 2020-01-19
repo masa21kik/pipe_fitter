@@ -23,4 +23,14 @@ class YamlLoaderTest < Test::Unit::TestCase
       assert_equal(PipeFitter::YamlLoader.new.load(file.path), hash)
     end
   end
+
+  sub_test_case "include_template" do
+    def test_include_template()
+      t1_str = %(foo: <%= context[:foo] %>)
+      t1_yml = create_tempfile(t1_str)
+      dp_str = %(<%= include_template("#{File.basename(t1_yml.path)}", indent:0, foo: 5) %>)
+      dp_yml = create_tempfile(dp_str)
+      assert_equal(PipeFitter::YamlLoader.new.load(dp_yml.path), {"foo" => 5})
+    end
+  end
 end
