@@ -83,6 +83,15 @@ module PipeFitter
     end
 
     class PipelineBaseObjects
+      def initialize(objs)
+        @objs = (objs || []).map { |obj| symbolize_keys(obj) }
+                .sort_by { |obj| obj[:id] }.map do |obj|
+          obj.sort_by do |k, v|
+            [key_order.index(k) || key_order.size + 1, k.to_s, v.to_s]
+          end.to_h
+        end
+      end
+
       def to_objs
         case @objs
         when Array then @objs.map { |obj| stringify_keys(obj) }
@@ -126,7 +135,7 @@ module PipeFitter
         res = []
         obj.each do |k, v|
           next if skip_keys.include?(k)
-          (v.is_a?(Array) ? v : [v]).each do |vv|
+          Array(v).each do |vv|
             if vv.is_a?(Hash) && vv.key?(:ref)
               res << { key: k, ref_value: vv[:ref] }
             else
@@ -150,15 +159,8 @@ module PipeFitter
         new(objs)
       end
 
-      KEY_ORDER = %i(id name).freeze
-
-      def initialize(objs)
-        @objs = (objs || []).map { |obj| symbolize_keys(obj) }
-                .sort_by { |obj| obj[:id] }.map do |obj|
-          obj.sort_by do |k, v|
-            [KEY_ORDER.index(k) || KEY_ORDER.size + 1, k.to_s, v.to_s]
-          end.to_h
-        end
+      def key_order
+        %i(id name).freeze
       end
 
       def to_api_opts
@@ -179,15 +181,8 @@ module PipeFitter
         new(objs)
       end
 
-      KEY_ORDER = %i(id).freeze
-
-      def initialize(objs)
-        @objs = (objs || []).map { |obj| symbolize_keys(obj) }
-                .sort_by { |obj| obj[:id] }.map do |obj|
-          obj.sort_by do |k, v|
-            [KEY_ORDER.index(k) || KEY_ORDER.size + 1, k.to_s, v.to_s]
-          end.to_h
-        end
+      def key_order
+        %i(id).freeze
       end
 
       def to_api_opts
