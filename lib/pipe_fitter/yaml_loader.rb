@@ -12,6 +12,8 @@ module PipeFitter
     def load(filename)
       @search_path.unshift(Pathname.new(filename).dirname)
       text = eval_erb(grep_v(filename, /^\s*#/))
+      YAML.load(text, aliases: true) || {}
+    rescue ArgumentError
       YAML.load(text) || {}
     rescue Psych::SyntaxError => e
       text.split("\n").each_with_index do |l, i|
