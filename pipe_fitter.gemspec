@@ -25,6 +25,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "thor"
   spec.add_runtime_dependency "hashie"
   spec.add_runtime_dependency "s3diff", ">= 0.1.2"
+  spec.add_runtime_dependency "rexml"
 
   spec.add_development_dependency "bundler", ">= 1.3.5"
   spec.add_development_dependency "rake"
