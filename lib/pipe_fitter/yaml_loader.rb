@@ -39,7 +39,7 @@ module PipeFitter
     private
 
     def eval_erb(data, context = {})
-      ERB.new(data, nil, "-").result(binding).strip
+      ERB.new(data, trim_mode: "-").result(binding).strip
     end
 
     def grep_v(filename, pattern)
