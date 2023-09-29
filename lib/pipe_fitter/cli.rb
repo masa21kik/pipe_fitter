@@ -15,6 +15,14 @@ module PipeFitter
     def register(definition_file)
       id, res = client.register(definition_file)
       puts id, JSON.pretty_generate(res)
+
+      diff = client.diff_deploy_files(definition_file)
+      unless diff.empty?
+        puts diff.join("\n")
+        print "\nReally upload deploy_files? [y/N] : "
+        abort("Upload deploy_files were canceled") if $stdin.gets.chomp !~ /^y$/i
+        client.upload_deploy_files(definition_file)
+      end
     end
 
     desc "diff DEFINITION_FILE", "Show pipeline difference"
