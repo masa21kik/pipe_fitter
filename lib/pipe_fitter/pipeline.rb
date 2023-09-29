@@ -135,7 +135,7 @@ module PipeFitter
         res = []
         obj.each do |k, v|
           next if skip_keys.include?(k)
-          Array(v).each do |vv|
+          (v.is_a?(Array) ? v : [v]).each do |vv|
             if vv.is_a?(Hash) && vv.key?(:ref)
               res << { key: k, ref_value: vv[:ref] }
             else
